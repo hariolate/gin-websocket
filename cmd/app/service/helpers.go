@@ -45,3 +45,9 @@ func ServeAddrFromConfig(c *Config) string {
 
 	return addr + ":" + port
 }
+
+func MustMarshal(obj interface{}) []byte {
+	data, err := json.Marshal(obj)
+	NoError(err)
+	return data
+}

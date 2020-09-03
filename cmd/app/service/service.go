@@ -44,7 +44,7 @@ func (s *Service) redisChatHistoryKey() string {
 }
 
 func (s *Service) storeChatMessage(m *Message) {
-	NoError(s.r.LPush(s.c, s.redisChatHistoryKey(), m).Err())
+	NoError(s.r.LPush(s.c, s.redisChatHistoryKey(), string(MustMarshal(m))).Err())
 }
 
 func (s *Service) getNextUid() uint32 {
