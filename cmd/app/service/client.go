@@ -12,7 +12,8 @@ type client struct {
 	conn *websocket.Conn
 	srv  *Service
 
-	id uint32
+	id        uint32
+	firstPing bool
 }
 
 func (c *client) redisTimeoutKey() string {
@@ -80,6 +81,11 @@ func (c *client) handlePing() {
 	NoError(err)
 
 	NoError(c.srv.r.Set(c.srv.c, c.redisTimeoutKey(), 1, clientTimeout).Err())
+
+	if c.firstPing {
+		go c.sendMessages(c.srv.getAllHistoryMessages())
+		c.firstPing = false
+	}
 }
 
 func (c *client) sendMessage(m *Message) {

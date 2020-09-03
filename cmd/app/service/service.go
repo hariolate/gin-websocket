@@ -91,13 +91,13 @@ func (s *Service) newClient(w http.ResponseWriter, r *http.Request) {
 	NoError(err)
 
 	cli := &client{
-		conn: conn,
-		srv:  s,
-		id:   s.getNextUid(),
+		conn:      conn,
+		srv:       s,
+		id:        s.getNextUid(),
+		firstPing: true,
 	}
 
 	cli.setupWorkers()
-	cli.sendMessages(s.getAllHistoryMessages())
 	s.clients[cli.id] = cli
 }
 
