@@ -71,6 +71,7 @@ func (s *Service) onNewMessage(m *Message) {
 		return
 	}
 	s.broadcastMessage(m)
+	s.storeChatMessage(m)
 }
 
 func (s *Service) broadcastMessage(m *Message) {
