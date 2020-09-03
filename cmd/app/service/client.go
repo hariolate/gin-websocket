@@ -22,7 +22,7 @@ func (c *client) redisTimeoutKey() string {
 const clientTimeout = time.Minute * 2
 
 func (c *client) setupWorkers() {
-	go c.timeoutWorker()
+	//go c.timeoutWorker()
 	go c.receiveWorker()
 }
 
