@@ -22,7 +22,7 @@ func (c *client) redisTimeoutKey() string {
 const clientTimeout = time.Minute * 2
 
 func (c *client) setupWorkers() {
-	//go c.timeoutWorker()
+	go c.timeoutWorker()
 	go c.receiveWorker()
 }
 
@@ -86,9 +86,9 @@ func (c *client) sendMessage(m *Message) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
+			c.srv.removeClient(c)
+			_ = c.conn.Close()
 		}
-		c.srv.removeClient(c)
-		_ = c.conn.Close()
 	}()
 	NoError(c.conn.WriteJSON(m))
 }
