@@ -102,6 +102,7 @@ func (c *client) pingWorker() {
 		if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 			return
 		}
+		ticker.Reset(pingPeriod)
 	}
 }
 
