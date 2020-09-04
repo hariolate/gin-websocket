@@ -22,7 +22,7 @@
 
 <script>
     import common from "../common";
-    import root from "../protocol/message_pb"
+    import root from "../protocol/protocol"
 
     export default {
         name: "Home",
