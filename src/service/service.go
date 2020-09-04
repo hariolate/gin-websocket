@@ -8,7 +8,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"gtihub.com/gin-websocket/src/service/protocol"
+	"gtihub.com/gin-websocket/src/protocol"
 	"log"
 	"net/http"
 	"sync/atomic"

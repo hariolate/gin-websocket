@@ -6,7 +6,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/gorilla/websocket"
-	"gtihub.com/gin-websocket/src/service/protocol"
+	"gtihub.com/gin-websocket/src/protocol"
 	"log"
 	"time"
 )
