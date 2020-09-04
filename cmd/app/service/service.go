@@ -89,7 +89,7 @@ func (s *Service) broadcastMessage(m *protocol.Message) {
 
 const (
 	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
+	pongWait       = 180 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 512
 )
@@ -113,12 +113,6 @@ func (s *Service) newClient(w http.ResponseWriter, r *http.Request) {
 		firstPing: true,
 	}
 
-	cli.conn.SetReadLimit(maxMessageSize)
-	NoError(cli.conn.SetReadDeadline(time.Now().Add(pongWait)))
-	cli.conn.SetPingHandler(func(string) error {
-		NoError(cli.conn.SetReadDeadline(time.Now().Add(pongWait)))
-		return nil
-	})
 	cli.setupWorkers()
 
 	s.clients[cli.id] = cli

@@ -27,7 +27,7 @@ func (c *client) redisTimeoutKey() string {
 func (c *client) setupWorkers() {
 	//go c.timeoutWorker()
 	go c.pingWorker()
-	go c.receiveWorker()
+	go c.readWorker()
 }
 
 //func (c *client) timeoutWorker() {
@@ -41,7 +41,7 @@ func (c *client) setupWorkers() {
 //	}
 //}
 
-func (c *client) receiveWorker() {
+func (c *client) readWorker() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
@@ -49,6 +49,13 @@ func (c *client) receiveWorker() {
 		c.srv.removeClient(c)
 		_ = c.conn.Close()
 	}()
+
+	c.conn.SetReadLimit(maxMessageSize)
+	NoError(c.conn.SetReadDeadline(time.Now().Add(pongWait)))
+	c.conn.SetPongHandler(func(string) error {
+		NoError(c.conn.SetReadDeadline(time.Now().Add(pongWait)))
+		return nil
+	})
 
 	for {
 		t, msg, err := c.conn.ReadMessage()
@@ -111,11 +118,8 @@ func (c *client) pingWorker() {
 
 	for {
 		<-ticker.C
-		_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-		if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-			return
-		}
-		ticker.Reset(pingPeriod)
+		NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
+		NoError(c.conn.WriteMessage(websocket.PingMessage, nil))
 	}
 }
 
