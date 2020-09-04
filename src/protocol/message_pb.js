@@ -1,3 +1,4 @@
+/* eslint-disable */
 // source: message.proto
 /**
  * @fileoverview

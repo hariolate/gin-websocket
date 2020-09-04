@@ -1,5 +1,8 @@
+const path = require("path");
+
 module.exports = {
-    publicPath: "./",
+    outputDir: path.resolve(__dirname, "./static"),
+    publicPath: __dirname,
     configureWebpack: {
         resolve: {
             alias: {

@@ -12,6 +12,7 @@ import (
 var (
 	configFile = flag.String("config", "config.json", "specify config file")
 	debug      = flag.Bool("debug", true, "is in debug env or not")
+	root       = flag.String("root", "./", "project root")
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 
 	router.
 		Use(service.MakeCORSMiddleware()).
-		Static("/static", "./static").
+		Static("/static", *root+"/static").
 		GET("/ws", srv.Handler).
 		GET("/", func(c *gin.Context) {
 			c.Redirect(http.StatusPermanentRedirect, "/static/index.html")
