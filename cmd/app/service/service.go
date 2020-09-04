@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"net/http"
 	"sync/atomic"
+	"time"
 )
 
 type Service struct {
@@ -82,6 +83,13 @@ func (s *Service) broadcastMessage(m *Message) {
 	}
 }
 
+const (
+	writeWait      = 10 * time.Second
+	pongWait       = 60 * time.Second
+	pingPeriod     = (pongWait * 9) / 10
+	maxMessageSize = 512
+)
+
 func (s *Service) newClient(w http.ResponseWriter, r *http.Request) {
 	wsupgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -98,7 +106,14 @@ func (s *Service) newClient(w http.ResponseWriter, r *http.Request) {
 		firstPing: true,
 	}
 
+	cli.conn.SetReadLimit(maxMessageSize)
+	NoError(cli.conn.SetReadDeadline(time.Now().Add(pongWait)))
+	cli.conn.SetPingHandler(func(string) error {
+		NoError(cli.conn.SetReadDeadline(time.Now().Add(pongWait)))
+		return nil
+	})
 	cli.setupWorkers()
+
 	s.clients[cli.id] = cli
 }
 

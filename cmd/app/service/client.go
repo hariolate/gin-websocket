@@ -20,23 +20,24 @@ func (c *client) redisTimeoutKey() string {
 	return fmt.Sprintf("client:%d:timeout", c.id)
 }
 
-const clientTimeout = time.Minute * 2
+//const clientTimeout = time.Minute * 2
 
 func (c *client) setupWorkers() {
-	go c.timeoutWorker()
+	//go c.timeoutWorker()
+	go c.pingWorker()
 	go c.receiveWorker()
 }
 
-func (c *client) timeoutWorker() {
-	NoError(c.srv.r.Set(c.srv.c, c.redisTimeoutKey(), 1, clientTimeout).Err())
-
-	for {
-		if c.srv.r.Get(c.srv.c, c.redisTimeoutKey()).Err() != nil {
-			_ = c.conn.Close()
-			break
-		}
-	}
-}
+//func (c *client) timeoutWorker() {
+//	NoError(c.srv.r.Set(c.srv.c, c.redisTimeoutKey(), 1, clientTimeout).Err())
+//
+//	for {
+//		if c.srv.r.Get(c.srv.c, c.redisTimeoutKey()).Err() != nil {
+//			_ = c.conn.Close()
+//			break
+//		}
+//	}
+//}
 
 func (c *client) receiveWorker() {
 	defer func() {
@@ -55,10 +56,10 @@ func (c *client) receiveWorker() {
 }
 
 func (c *client) handleNewMessage(messageType int, data []byte) *Message {
-	if messageType == websocket.PingMessage {
-		c.handlePing()
-		return nil
-	}
+	//if messageType == websocket.PingMessage {
+	//	c.handlePing()
+	//	return nil
+	//}
 
 	var raw RawMessage
 	NoError(json.Unmarshal(data, &raw))
@@ -74,17 +75,33 @@ func (c *client) handleNewMessage(messageType int, data []byte) *Message {
 	}
 }
 
-func (c *client) handlePing() {
-	writer, err := c.conn.NextWriter(websocket.PongMessage)
-	NoError(err)
-	_, err = writer.Write([]byte("pong"))
-	NoError(err)
+//func (c *client) handlePing() {
+//	writer, err := c.conn.NextWriter(websocket.PongMessage)
+//	NoError(err)
+//	_, err = writer.Write([]byte("pong"))
+//	NoError(err)
+//
+//	NoError(c.srv.r.Set(c.srv.c, c.redisTimeoutKey(), 1, clientTimeout).Err())
+//
+//	if c.firstPing {
+//		go c.sendMessages(c.srv.getAllHistoryMessages())
+//		c.firstPing = false
+//	}
+//}
 
-	NoError(c.srv.r.Set(c.srv.c, c.redisTimeoutKey(), 1, clientTimeout).Err())
+func (c *client) pingWorker() {
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		_ = c.conn.Close()
+	}()
 
-	if c.firstPing {
-		go c.sendMessages(c.srv.getAllHistoryMessages())
-		c.firstPing = false
+	for {
+		<-ticker.C
+		_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			return
+		}
 	}
 }
 
@@ -96,6 +113,7 @@ func (c *client) sendMessage(m *Message) {
 			_ = c.conn.Close()
 		}
 	}()
+	NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
 	NoError(c.conn.WriteJSON(m))
 }
 
