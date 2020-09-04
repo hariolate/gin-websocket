@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -18,6 +19,9 @@ type client struct {
 	firstPong bool
 
 	toSendChan chan *protocol.Message
+
+	c          context.Context
+	cancelFunc context.CancelFunc
 }
 
 func (c *client) redisTimeoutKey() string {
@@ -45,21 +49,43 @@ func (c *client) setupWorkers() {
 //}
 
 func (c *client) receiveWorker() {
+	type readMessageStruct struct {
+		messageType int
+		p           []byte
+		err         error
+	}
+	readMessageChan := make(chan readMessageStruct)
+
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
 		}
 		c.srv.removeClient(c)
 		_ = c.conn.Close()
+		close(readMessageChan)
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
 	NoError(c.conn.SetReadDeadline(time.Now().Add(pongWait)))
 
-	for {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("client %d: receiveWorker crashed: %s\n", c.id, r)
+			}
+		}()
 		t, msg, err := c.conn.ReadMessage()
-		NoError(err)
-		go c.srv.onNewMessage(c.handleNewMessage(t, msg))
+		readMessageChan <- readMessageStruct{t, msg, err}
+	}()
+
+	for {
+		select {
+		case rm := <-readMessageChan:
+			NoError(rm.err)
+			go c.srv.onNewMessage(c.handleNewMessage(rm.messageType, rm.p))
+		case <-c.c.Done():
+			return
+		}
 	}
 }
 
@@ -156,6 +182,8 @@ func (c *client) sendWorker() {
 			NoError(err)
 			NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
 			NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
+		case <-c.c.Done():
+			return
 		}
 	}
 }

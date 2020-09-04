@@ -43,5 +43,9 @@ func main() {
 		Handler: router,
 	}
 
+	defer func() {
+		srv.Shutdown()
+	}()
+
 	service.NoError(server.ListenAndServe())
 }

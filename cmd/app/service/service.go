@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"gtihub.com/gin-websocket/cmd/app/protocol"
+	"log"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -106,12 +107,16 @@ func (s *Service) newClient(w http.ResponseWriter, r *http.Request) {
 	conn, err := wsupgrader.Upgrade(w, r, nil)
 	NoError(err)
 
+	c, f := context.WithCancel(s.c)
+
 	cli := &client{
 		conn:       conn,
 		srv:        s,
 		id:         s.getNextUid(),
 		firstPong:  true,
 		toSendChan: make(chan *protocol.Message, 100),
+		c:          c,
+		cancelFunc: f,
 	}
 
 	cli.setupWorkers()
@@ -120,6 +125,18 @@ func (s *Service) newClient(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) removeClient(c *client) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("removing client %d: %s\n", c.id, r)
+		}
+	}()
+	_, ok := s.clients[c.id]
+	if !ok {
+		return
+	}
+	c.cancelFunc()
+	close(c.toSendChan)
+	_ = c.conn.Close()
 	delete(s.clients, c.id)
 }
 
@@ -127,3 +144,11 @@ func (s *Service) Handler(c *gin.Context) {
 	s.newClient(c.Writer, c.Request)
 	c.Status(http.StatusOK)
 }
+
+func (s *Service) Shutdown() {
+	for _, c := range s.clients {
+		s.removeClient(c)
+	}
+}
+
+// TODO close all connections when service is closed
