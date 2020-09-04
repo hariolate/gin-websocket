@@ -33,7 +33,8 @@
             }
         },
         mounted() {
-            const ws = new WebSocket('ws://158.247.202.150:7000/ws');
+            const host = location.host;
+            const ws = new WebSocket('ws://'+host+'/ws');
             ws.binaryType = "arraybuffer";
             const rmsg = root.lookupType("RawMessage");
             const msg = root.lookupType("Message");
