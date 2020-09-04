@@ -90,7 +90,7 @@ func (s *Service) broadcastMessage(m *protocol.Message) {
 
 const (
 	writeWait      = 10 * time.Second
-	pongWait       = 180 * time.Second
+	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 512
 )

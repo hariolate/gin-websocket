@@ -169,6 +169,9 @@ func (c *client) sendWorker() {
 		return nil
 	})
 
+	NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
+	NoError(c.conn.WriteMessage(websocket.PingMessage, nil))
+
 	for {
 		select {
 		case <-ticker.C:
