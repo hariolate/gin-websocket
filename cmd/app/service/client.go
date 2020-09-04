@@ -1,9 +1,11 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/gorilla/websocket"
+	"gtihub.com/gin-websocket/cmd/app/protocol"
 	"log"
 	"time"
 )
@@ -55,23 +57,34 @@ func (c *client) receiveWorker() {
 	}
 }
 
-func (c *client) handleNewMessage(messageType int, data []byte) *Message {
+func (c *client) handleNewMessage(messageType int, data []byte) *protocol.Message {
 	//if messageType == websocket.PingMessage {
 	//	c.handlePing()
 	//	return nil
 	//}
 
-	var raw RawMessage
-	NoError(json.Unmarshal(data, &raw))
+	//var raw RawMessage
+	//NoError(json.Unmarshal(data, &raw))
 
+	var raw protocol.RawMessage
+	NoError(proto.Unmarshal(data, &raw))
 	if messageType != websocket.TextMessage {
 		raw.Message = "--unsupported message--"
 	}
 
-	return &Message{
-		UID:       c.id,
-		Raw:       raw,
-		Timestamp: time.Now(),
+	//return &Message{
+	//	UID:       c.id,
+	//	Raw:       raw,
+	//	Timestamp: time.Now(),
+	//}
+
+	now, err := ptypes.TimestampProto(time.Now())
+	NoError(err)
+
+	return &protocol.Message{
+		Uid:       c.id,
+		Raw:       nil,
+		Timestamp: now,
 	}
 }
 
@@ -106,7 +119,7 @@ func (c *client) pingWorker() {
 	}
 }
 
-func (c *client) sendMessage(m *Message) {
+func (c *client) sendMessage(m *protocol.Message) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
@@ -114,11 +127,13 @@ func (c *client) sendMessage(m *Message) {
 			_ = c.conn.Close()
 		}
 	}()
+	data, err := proto.Marshal(m)
+	NoError(err)
 	NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
-	NoError(c.conn.WriteJSON(m))
+	NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
 }
 
-func (c *client) sendMessages(ms []*Message) {
+func (c *client) sendMessages(ms []*protocol.Message) {
 	for _, m := range ms {
 		go c.sendMessage(m)
 	}

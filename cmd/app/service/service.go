@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"gtihub.com/gin-websocket/cmd/app/protocol"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -44,30 +45,33 @@ func (s *Service) redisChatHistoryKey() string {
 	return fmt.Sprintf("chat:%s:history", s.id)
 }
 
-func (s *Service) storeChatMessage(m *Message) {
-	NoError(s.r.LPush(s.c, s.redisChatHistoryKey(), string(MustMarshal(m))).Err())
+func (s *Service) storeChatMessage(m *protocol.Message) {
+	data, err := proto.Marshal(m)
+	NoError(err)
+	NoError(s.r.LPush(s.c, s.redisChatHistoryKey(), string(data)).Err())
 }
 
 func (s *Service) getNextUid() uint32 {
 	return atomic.AddUint32(&s.uid, 1)
 }
 
-func (s *Service) getAllHistoryMessages() []*Message {
-	jsonMessages, err := s.r.LRange(s.c, s.redisChatHistoryKey(), 0, -1).Result()
+func (s *Service) getAllHistoryMessages() []*protocol.Message {
+	protoMessages, err := s.r.LRange(s.c, s.redisChatHistoryKey(), 0, -1).Result()
 	NoError(err)
 
-	var results = make([]*Message, len(jsonMessages))
+	var results = make([]*protocol.Message, len(protoMessages))
 
-	for i, jsonMessage := range jsonMessages {
-		var message Message
-		NoError(json.Unmarshal([]byte(jsonMessage), &message))
+	for i, protoMessage := range protoMessages {
+		var message protocol.Message
+		NoError(proto.Unmarshal([]byte(protoMessage), &message))
+		//NoError(json.Unmarshal([]byte(jsonMessage), &message))
 		results[i] = &message
 	}
 
 	return results
 }
 
-func (s *Service) onNewMessage(m *Message) {
+func (s *Service) onNewMessage(m *protocol.Message) {
 	if m == nil {
 		return
 	}
@@ -75,7 +79,7 @@ func (s *Service) onNewMessage(m *Message) {
 	s.storeChatMessage(m)
 }
 
-func (s *Service) broadcastMessage(m *Message) {
+func (s *Service) broadcastMessage(m *protocol.Message) {
 	clients := s.clients
 
 	for _, client := range clients {
