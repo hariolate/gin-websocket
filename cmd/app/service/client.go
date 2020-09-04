@@ -60,8 +60,6 @@ func (c *client) receiveWorker() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
 		}
-		c.srv.removeClient(c)
-		_ = c.conn.Close()
 		close(readMessageChan)
 	}()
 
@@ -159,7 +157,6 @@ func (c *client) sendWorker() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
 			c.srv.removeClient(c)
-			_ = c.conn.Close()
 		}
 	}()
 

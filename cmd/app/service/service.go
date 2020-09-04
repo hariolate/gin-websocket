@@ -134,10 +134,11 @@ func (s *Service) removeClient(c *client) {
 	if !ok {
 		return
 	}
+	delete(s.clients, c.id)
+
 	c.cancelFunc()
 	close(c.toSendChan)
 	_ = c.conn.Close()
-	delete(s.clients, c.id)
 }
 
 func (s *Service) Handler(c *gin.Context) {
