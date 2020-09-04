@@ -28,7 +28,7 @@ func (c *client) redisTimeoutKey() string {
 
 func (c *client) setupWorkers() {
 	//go c.timeoutWorker()
-	go c.pingWorker()
+	//go c.pingWorker()
 	go c.receiveWorker()
 	go c.sendWorker()
 }
@@ -108,11 +108,33 @@ func (c *client) handleNewMessage(messageType int, data []byte) *protocol.Messag
 //	}
 //}
 
-func (c *client) pingWorker() {
+//func (c *client) pingWorker() {
+//	ticker := time.NewTicker(pingPeriod)
+//	defer func() {
+//		ticker.Stop()
+//		c.srv.removeClient(c)
+//		_ = c.conn.Close()
+//	}()
+//
+//
+//
+//	for {
+//		<-ticker.C
+//		NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
+//		NoError(c.conn.WriteMessage(websocket.PingMessage, nil))
+//	}
+//}
+
+func (c *client) sendWorker() {
 	ticker := time.NewTicker(pingPeriod)
+
 	defer func() {
 		ticker.Stop()
-		_ = c.conn.Close()
+		if r := recover(); r != nil {
+			log.Printf("client %d crashed: %s\n", c.id, r)
+			c.srv.removeClient(c)
+			_ = c.conn.Close()
+		}
 	}()
 
 	c.conn.SetPongHandler(func(string) error {
@@ -125,25 +147,16 @@ func (c *client) pingWorker() {
 	})
 
 	for {
-		<-ticker.C
-		NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
-		NoError(c.conn.WriteMessage(websocket.PingMessage, nil))
-	}
-}
-
-func (c *client) sendWorker() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("client %d crashed: %s\n", c.id, r)
-			c.srv.removeClient(c)
-			_ = c.conn.Close()
+		select {
+		case <-ticker.C:
+			NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
+			NoError(c.conn.WriteMessage(websocket.PingMessage, nil))
+		case toSend := <-c.toSendChan:
+			data, err := proto.Marshal(toSend)
+			NoError(err)
+			NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
+			NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
 		}
-	}()
-	for {
-		data, err := proto.Marshal(<-c.toSendChan)
-		NoError(err)
-		NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
-		NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
 	}
 }
 
