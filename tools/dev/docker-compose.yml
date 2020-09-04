@@ -15,8 +15,8 @@ services:
       - redis
   redis:
     image: redis
-    ports:
-      - '7002:6379'
+#    ports:
+#      - '7002:6379'
     volumes:
       - ./tools/dev/redis_data:/data
     entrypoint: redis-server --appendonly yes
