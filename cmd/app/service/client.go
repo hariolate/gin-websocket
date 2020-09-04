@@ -90,7 +90,7 @@ func (c *client) handleNewMessage(messageType int, data []byte) *protocol.Messag
 
 	return &protocol.Message{
 		Uid:       c.id,
-		Raw:       nil,
+		Raw:       &raw,
 		Timestamp: now,
 	}
 }
