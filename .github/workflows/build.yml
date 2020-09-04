@@ -1,0 +1,17 @@
+name: Build
+on: push
+
+jobs:
+  build_static_assets:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+      - run: mkdir artifacts
+      - run: npm install
+      - run: npm run build
+      - run: mv dist/* artifacts
+      - uses: actions/upload-artifact@v2
+        with:
+          name: static_assets
+          path: artifacts
