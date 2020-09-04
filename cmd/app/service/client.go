@@ -136,7 +136,7 @@ func (c *client) sendMessage(m *protocol.Message) {
 	data, err := proto.Marshal(m)
 	NoError(err)
 	NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
-	NoError(c.conn.WriteMessage(websocket.TextMessage, data))
+	NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
 }
 
 func (c *client) sendMessages(ms []*protocol.Message) {
