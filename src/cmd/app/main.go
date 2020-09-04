@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/context"
-	"gtihub.com/gin-websocket/cmd/app/service"
+	"gtihub.com/gin-websocket/src/service"
 	"log"
 	"net/http"
 )

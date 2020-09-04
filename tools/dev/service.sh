@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" >/dev/null 2>&1 && pwd)"
+set -e
+
+project_root=$($(dirname "${BASH_SOURCE[0]}")/../project_root.sh)
 
 mkdir -p ${project_root}/tools/dev/bin
 mkdir -p ${project_root}/tools/dev/db_data
