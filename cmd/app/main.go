@@ -27,6 +27,7 @@ func main() {
 	router := gin.Default()
 
 	router.
+		Use(service.MakeCORSMiddleware()).
 		Static("/static", "./static").
 		GET("/ws", srv.Handler).
 		GET("/", func(c *gin.Context) {
