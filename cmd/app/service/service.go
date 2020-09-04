@@ -107,10 +107,11 @@ func (s *Service) newClient(w http.ResponseWriter, r *http.Request) {
 	NoError(err)
 
 	cli := &client{
-		conn:      conn,
-		srv:       s,
-		id:        s.getNextUid(),
-		firstPing: true,
+		conn:       conn,
+		srv:        s,
+		id:         s.getNextUid(),
+		firstPong:  true,
+		toSendChan: make(chan *protocol.Message, 100),
 	}
 
 	cli.setupWorkers()

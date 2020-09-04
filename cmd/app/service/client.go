@@ -15,7 +15,7 @@ type client struct {
 	srv  *Service
 
 	id        uint32
-	firstPing bool
+	firstPong bool
 
 	toSendChan chan *protocol.Message
 }
@@ -29,7 +29,8 @@ func (c *client) redisTimeoutKey() string {
 func (c *client) setupWorkers() {
 	//go c.timeoutWorker()
 	go c.pingWorker()
-	go c.readWorker()
+	go c.receiveWorker()
+	go c.sendWorker()
 }
 
 //func (c *client) timeoutWorker() {
@@ -43,7 +44,7 @@ func (c *client) setupWorkers() {
 //	}
 //}
 
-func (c *client) readWorker() {
+func (c *client) receiveWorker() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
@@ -54,10 +55,6 @@ func (c *client) readWorker() {
 
 	c.conn.SetReadLimit(maxMessageSize)
 	NoError(c.conn.SetReadDeadline(time.Now().Add(pongWait)))
-	c.conn.SetPongHandler(func(string) error {
-		NoError(c.conn.SetReadDeadline(time.Now().Add(pongWait)))
-		return nil
-	})
 
 	for {
 		t, msg, err := c.conn.ReadMessage()
@@ -105,9 +102,9 @@ func (c *client) handleNewMessage(messageType int, data []byte) *protocol.Messag
 //
 //	NoError(c.srv.r.Set(c.srv.c, c.redisTimeoutKey(), 1, clientTimeout).Err())
 //
-//	if c.firstPing {
+//	if c.firstPong {
 //		go c.sendMessages(c.srv.getAllHistoryMessages())
-//		c.firstPing = false
+//		c.firstPong = false
 //	}
 //}
 
@@ -118,6 +115,15 @@ func (c *client) pingWorker() {
 		_ = c.conn.Close()
 	}()
 
+	c.conn.SetPongHandler(func(string) error {
+		if c.firstPong {
+			go c.sendAllHistoryMessages()
+			c.firstPong = false
+		}
+		NoError(c.conn.SetReadDeadline(time.Now().Add(pongWait)))
+		return nil
+	})
+
 	for {
 		<-ticker.C
 		NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
@@ -125,7 +131,7 @@ func (c *client) pingWorker() {
 	}
 }
 
-func (c *client) sendMessage(m *protocol.Message) {
+func (c *client) sendWorker() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("client %d crashed: %s\n", c.id, r)
@@ -133,14 +139,35 @@ func (c *client) sendMessage(m *protocol.Message) {
 			_ = c.conn.Close()
 		}
 	}()
-	data, err := proto.Marshal(m)
-	NoError(err)
-	NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
-	NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
+	for {
+		data, err := proto.Marshal(<-c.toSendChan)
+		NoError(err)
+		NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
+		NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
+	}
+}
+
+func (c *client) sendMessage(m *protocol.Message) {
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		log.Printf("client %d crashed: %s\n", c.id, r)
+	//		c.srv.removeClient(c)
+	//		_ = c.conn.Close()
+	//	}
+	//}()
+	//data, err := proto.Marshal(m)
+	//NoError(err)
+	//NoError(c.conn.SetWriteDeadline(time.Now().Add(writeWait)))
+	//NoError(c.conn.WriteMessage(websocket.BinaryMessage, data))
+	c.toSendChan <- m
 }
 
 func (c *client) sendMessages(ms []*protocol.Message) {
 	for _, m := range ms {
 		go c.sendMessage(m)
 	}
+}
+
+func (c *client) sendAllHistoryMessages() {
+	c.sendMessages(c.srv.getAllHistoryMessages())
 }
