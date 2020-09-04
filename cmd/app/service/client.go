@@ -68,9 +68,9 @@ func (c *client) handleNewMessage(messageType int, data []byte) *protocol.Messag
 
 	var raw protocol.RawMessage
 	NoError(proto.Unmarshal(data, &raw))
-	if messageType != websocket.TextMessage {
-		raw.Message = "--unsupported message--"
-	}
+	//if messageType != websocket.TextMessage {
+	//	raw.Message = "--unsupported message--"
+	//}
 
 	//return &Message{
 	//	UID:       c.id,
