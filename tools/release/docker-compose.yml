@@ -3,7 +3,7 @@ services:
   api:
     build:
       context: ./
-      dockerfile: tools/dev/Dockerfile
+      dockerfile: tools/release/Dockerfile
     expose:
       - 80
     ports:
